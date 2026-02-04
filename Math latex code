@@ -1,0 +1,118 @@
+\documentclass{article}
+\usepackage{graphicx} 
+\usepackage{amsmath}
+
+\begin{document}
+
+\subsection*{Assumptions}
+
+Each course requires exactly 2 teaching hours per week.
+\subsection*{Sets and Variables}
+Let $I_1, I_2, I_3, \dots$ denote families of programs/years. If two courses belong to the same set $I_k$, then they are part of the same 1-year program or the same year of a longer program. Let
+\[
+I_k = A_k \cup B_k,
+\]
+where:
+\begin{itemize}
+    \item $A_k$ is the set of compulsory courses,
+    \item $B_k$ is the set of optional courses.
+\end{itemize}
+\[
+x_{i,t} =
+\begin{cases}
+1, & \text{if course } i \text{ is scheduled at time slot } t, \\
+0, & \text{otherwise}.
+\end{cases}
+\]
+where $t \in \{1,2,\dots,45\}$ corresponding to 9 available time slots per day (9am--6pm) over 5 weekdays.
+\subsection*{Core constraints}
+No overlapping compulsory courses within the same program/year
+\[
+\sum_{i \in A_k} x_{i,t} \le 1
+\quad \forall k,\ \forall t \ \ \ (1)
+\]
+\\
+Each course needs exactly 2 hours per week (constraint subject to change)
+\[
+\sum_{t=1}^{45} x_{i,t} = 2
+\quad \forall i \ \ \ (2)
+\]
+\\ Optional courses cannot run concurrently with compulsory ones
+\[
+x_{i,t} + x_{j,t} \le 1
+\quad \forall i \in A_k,\ \forall j \in B_k,\ \forall t \ \ \ (3)
+\]
+\\ $y_k$ are integer variables that will be minimized in order to reduce overlaps as much as possible
+\[
+\sum_{i \in I_k} x_{i,t} \leq y_k
+\quad \forall k,\ \forall t \ \ \ (4)
+\]
+\subsection*{Constraints for Questions}
+No teaching after 5pm (9–6pm restriction)
+\[
+x_{i,9} = x_{i,18} = x_{i,27} = x_{i,36} = x_{i,45} = 0
+\quad \forall i
+\]
+\\ No teaching on Friday after 2pm
+\[
+x_{i,40} = x_{i,41} = x_{i,42} = x_{i,43} = x_{i,44} = x_{i,45} = 0
+\quad \forall i
+\]
+\\ Core teaching being delivered without clashes (not including workshops for now)
+$$\sum_{i\in I_k}x_{i,t}\leq1 \quad \forall t,k$$
+\\ Potential Lunch break (12–2pm)
+\[
+\sum_{i \in I_k} (x_{i,4} + x_{i,5}) - 1 \le b_1
+\]
+\[
+\sum_{i \in I_k} (x_{i,13} + x_{i,14}) - 1 \le b_2
+\]
+\[
+\sum_{i \in I_k} (x_{i,22} + x_{i,23}) - 1 \le b_3
+\]
+\[
+\sum_{i \in I_k} (x_{i,31} + x_{i,32}) - 1 \le b_4
+\]
+\[
+\sum_{i \in I_k} (x_{i,40} + x_{i,41}) - 1 \le b_5
+\]
+
+\[
+b_1, b_2, b_3, b_4, b_5 \ge 0
+\]
+\subsection*{Other optional constraints}
+\\ Consecutive 2 hour lectures
+\[
+x_{i,t} \le x_{i,t+1} + x_{i,t-1}
+\]
+\[\forall i, \forall\ 
+t \in \{2,\ldots,8\}\cup\{ 11,\ldots,17\}\cup\{ 20,\ldots,26\}\cup\{29,\ldots,35\}\cup\{ 38,\ldots,44\}
+\]
+\newpage
+Daily teaching load being less than 6 hours
+\[
+\sum_{t =1}^{9} \sum_{i \in I_k} x_{i,t} \le 6
+\quad \forall k
+\]
+\[
+\sum_{t =10}^{18} \sum_{i \in I_k} x_{i,t} \le 6
+\quad \forall k
+\]
+\[
+\sum_{t =19}^{27} \sum_{i \in I_k} x_{i,t} \le 6
+\quad \forall k
+\]
+\[
+\sum_{t =28}^{36} \sum_{i \in I_k} x_{i,t} \le 6
+\quad \forall k
+\]
+\[
+\sum_{t =37}^{45} \sum_{i \in I_k} x_{i,t} \le 6
+\quad \forall k
+\]
+\subsection*{Objective function (minimize overlaps and penalties)}
+\[
+\min \sum_k y_k + W\sum_{r=1}^{5} b_r
+\]
+where W is a potential weight (optional)
+\end{document}
