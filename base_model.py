@@ -6,6 +6,8 @@ import gurobipy as gb
 K = []
 #Courses/Events
 I = []
+#Capacities
+C = []
 #Time slots
 T = list(range(1,10))
 #Days
@@ -28,13 +30,19 @@ demand = {(i,m): () for i in I for m in M}
 W = 1
 #Event duration
 duration = {i: () for i in I}
+#Room counts w/ capacity
+R_c = {c: 0 for c in C}
+# sizes of i m
+enrolled = {(i, m): 0 for i in I for m in M}
+# eligible c's for i, m
+comp = {(i, m): {c for c in C if enrolled(i, m) <= c} for i in I for m in M}
 
 #Initialising the model
 model = gb.Model('timetable')
 
 #Decision Variable(s)
-#Whether course i is in slot or not 
-x = model.addVars(I, T, D, vtype=gb.GRB.BINARY, name='x')
+#Whether course i event m is in slot or not with capacity c
+x = model.addVars([(i, m, t, d, c) for i in I for m in M for t in T for d in D for c in comp[i, m]], vtype=gb.GRB.BINARY, name='x')
 #Overlap
 y = model.addVars(K, vtype=gb.GRB.INTEGER, lb=0, name='y')
 #Lunch break
@@ -91,6 +99,11 @@ for k in K:
     for d in D:
         model.addConstr(gb.quicksum(x[i,4,d] + x[i,5,d] for i in A[k] | B[K]) - 1
                         <= b[d,k])
+
+# We have a room big enough for all x
+# model.addConstrs(gb.quicksum(x[i, m, t, d, c] for i in I for m in M for c in comp[i,m]) <= R_c[c] for c in C for t in T for d in D )
+# Average room utilization <= .75
+# model.addConstrs(quicksum(x[i, m, t, d, c] for i in I for m in M for t in T for d in D for c in comp[i,m])/(R_c[c] * 45) <= .75 for c in C)
 
 #Optional Constraints
 #Ensure multi-slot events fill consecutive slots
