@@ -1,118 +1,137 @@
 \documentclass{article}
 \usepackage{graphicx} 
 \usepackage{amsmath}
-
+\usepackage[a4paper, left=3.5cm, right=3.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\title{Topics in Applied Operational Research \\ Mathematical Formulation}
+\author{\small Alexandros Zachakos, Ben de Sousa, Todd House, Nolan Willoughby, Conor McArthur}
+\date{}
 \begin{document}
-
-\subsection*{Assumptions}
-
-Each course requires exactly 2 teaching hours per week.
-\subsection*{Sets and Variables}
-Let $I_1, I_2, I_3, \dots$ denote families of programs/years. If two courses belong to the same set $I_k$, then they are part of the same 1-year program or the same year of a longer program. Let
-\[
-I_k = A_k \cup B_k,
-\]
+\maketitle
+\subsection*{\underline{SETS}}
+First of all, we want to define the sets of the problem in order to be able to distinguish all kinds of events. The first ones that we need to define are:
+\begin{itemize}
+    \item $K$: Set of all 1-year long programs or 1 year from a longer program
+    \item $M$: Set of all distinct events a course can have
+\end{itemize}
+Now, let $I_{k_1}, I_{k_2}, I_{k_3}, \dots$ denote families of 1-year long programs or 1 year from a longer program. If two courses belong in the same set $I_k$, then they are part of the same year of the respective program. Let's also define $A_k$ and $B_k$, such that
+$$I_k = A_k \cup B_k $$
 where:
 \begin{itemize}
     \item $A_k$ is the set of compulsory courses,
     \item $B_k$ is the set of optional courses.
 \end{itemize}
-\[
-x_{i,t} =
-\begin{cases}
-1, & \text{if course } i \text{ is scheduled at time slot } t, \\
-0, & \text{otherwise}.
-\end{cases}
-\]
-where $t \in \{1,2,\dots,45\}$ corresponding to 9 available time slots per day (9am--6pm) over 5 weekdays.
-\subsection*{Core constraints}
-No overlapping compulsory courses within the same program/year
-\[
-\sum_{i \in A_k} x_{i,t} \le 1
-\quad \forall k,\ \forall t \ \ \ (1)
-\]
+Similarly, there are roughly 100 types of events (e.g. lecture, workshop, tutorial, presentation, exam etc.) which we will also distinguish using the same method. We define
+\begin{itemize}
+    \item $A_k^m$ as the set of event type m of compulsory courses,
+    \item $B_k^m$ as the set of event type m of optional courses.
+\end{itemize}
+Obviously, $$\bigcup_{m\in M}A_k^m=A_k \quad \text{and} \quad \bigcup_{m\in M}B_k^m=B_k$$
+If an event is indexed as an all class event in the event calendar, then it becomes part of $A_k$ by default even if it is not an actual course, indicating that all students in the respective program must attend in any case.
 \\
-Each course needs exactly 2 hours per week (constraint subject to change)
-\[
-\sum_{t=1}^{45} x_{i,t} = 2
-\quad \forall i \ \ \ (2)
-\]
-\\ Optional courses cannot run concurrently with compulsory ones
-\[
-x_{i,t} + x_{j,t} \le 1
-\quad \forall i \in A_k,\ \forall j \in B_k,\ \forall t \ \ \ (3)
-\]
-\\ $y_k$ are integer variables that will be minimized in order to reduce overlaps as much as possible
-\[
-\sum_{i \in I_k} x_{i,t} \leq y_k
-\quad \forall k,\ \forall t \ \ \ (4)
-\]
-\subsection*{Constraints for Questions}
-No teaching after 5pm (9–6pm restriction)
-\[
-x_{i,9} = x_{i,18} = x_{i,27} = x_{i,36} = x_{i,45} = 0
-\quad \forall i
-\]
-\\ No teaching on Friday after 2pm
-\[
-x_{i,40} = x_{i,41} = x_{i,42} = x_{i,43} = x_{i,44} = x_{i,45} = 0
-\quad \forall i
-\]
-\\ Core teaching being delivered without clashes (not including workshops for now)
-$$\sum_{i\in I_k}x_{i,t}\leq1 \quad \forall t,k$$
-\\ Potential Lunch break (12–2pm)
-\[
-\sum_{i \in I_k} (x_{i,4} + x_{i,5}) - 1 \le b_1
-\]
-\[
-\sum_{i \in I_k} (x_{i,13} + x_{i,14}) - 1 \le b_2
-\]
-\[
-\sum_{i \in I_k} (x_{i,22} + x_{i,23}) - 1 \le b_3
-\]
-\[
-\sum_{i \in I_k} (x_{i,31} + x_{i,32}) - 1 \le b_4
-\]
-\[
-\sum_{i \in I_k} (x_{i,40} + x_{i,41}) - 1 \le b_5
-\]
+\\
+As for the time and space definitions, the following sets will be used:
+\begin{itemize}
+    \item $T=\{1,2,...,9\}$: Set of teaching hours during a day
+    \item $D=\{1,2,3,4,5\}$: Set of teaching days in a week
+    \item $C$: Set of room capacities
+\end{itemize}
 
+\subsection*{\underline{PARAMETERS \& VARIABLES}}
+The parameters of the problem are the following:
+\begin{itemize}
+    \item $d_{i,m}$: hours needed for event $m$ of course $i$ per week
+    \item $P_k$: total number of courses available in the year/program $k$
+    \item $P_k'$: total number of courses a student needs to pass in the year/program $k$ in order to progress
+    \item $s_{i,m}$: Number of seats allocated to event $m$ of course $i$
+    \item $r_c $ : Number of rooms with capacity $c$
+    \item $W$: Potential weight for the objective function
+\end{itemize}
+Having said that, the decision variables are the following:
+\begin{itemize}
+    \item $x_{i,t,d} =
+\begin{cases}
+1, & \text{if course } i \text{ is scheduled at time slot } t \text{ of day d}, \\
+0, & \text{otherwise}.
+\end{cases}$
+\item $y_k$: slack variable, designed to penalize optional course overlaps in year/program $k$
+\item $b_d$: slack variable, designed to penalize the absence of a lunch break in day $d$
+\end{itemize}
+\subsection*{\underline{CORE CONSTRAINTS}}
+Now we want to define the constraints of our formulation. \\
+First of all, we don't want any overlapping compulsory courses within the same program/year:
 \[
-b_1, b_2, b_3, b_4, b_5 \ge 0
+\sum_{i \in A_k} x_{i,t,d} \le 1
+\quad \forall k\in K,\ t\in T, \ d \in D\ \ \ (1)
 \]
-\subsection*{Other optional constraints}
-\\ Consecutive 2 hour lectures
+Similarly, optional courses should not run concurrently with compulsory ones so that a student can actually choose the optional one:
 \[
-x_{i,t} \le x_{i,t+1} + x_{i,t-1}
+x_{i,t,d} + x_{j,t,d} \le 1
+\quad \forall i \in A_k,\ j \in B_k,\ k\in K,\  t\in T, \ d\in D \quad (2)
 \]
-\[\forall i, \forall\ 
-t \in \{2,\ldots,8\}\cup\{ 11,\ldots,17\}\cup\{ 20,\ldots,26\}\cup\{29,\ldots,35\}\cup\{ 38,\ldots,44\}
-\]
-\newpage
-Daily teaching load being less than 6 hours
+It is also important to consider that if we are unable to deter any overlapping between optional courses, we should minimize it as much as possible, hence:
 \[
-\sum_{t =1}^{9} \sum_{i \in I_k} x_{i,t} \le 6
-\quad \forall k
+\sum_{i \in B_k} x_{i,t,d} \leq y_k
+\quad \forall k\in K,\ t\in T,\  d \in D\ \ \ (3)
+\]
+Furthermore, the program that a student is studying should be feasible, so there should be enough options for them to take, hence:
+$$y_k\leq P_k-P_k' \quad \forall k\in K\quad (4)$$
+Also, each event has a duration of $d_{i,m}$ hours per week that shall be determined: 
+\[
+\sum_{d\in D}\sum_{t\in T}\sum_{i\in A_k^m} x_{i,t,d} = d_{i,m}
+\quad \forall k\in K, m\in M \ \ \ (5)
+\]
+Finally, in order to make sure that the existing timetable can be implemented based on the available university venues, we want the courses that take place simultaneously to fit in the rooms of the existing facilities:
+$$\sum_{k\in K}\ \sum_{\substack{i \in I_k, \ m \in M: \\ s_{i,m} \le c}}s_{i,m}\ x_{i,t,d}\leq\sum_{c'\leq c}r_{c'} \quad \forall t\in T, \ d\in D,\ c\in C \quad (6)$$
+\subsection*{\underline{QUESTIONS CONSTRAINTS}}
+In this section we want to make an endeavor to answer any questions regarding the time management of the timetable. These questions are the following:
+\begin{enumerate}
+    \item Would it be possible to reduce core teaching hours to Monday-Friday 9-5pm?
+\[
+x_{i,9,d}  = 0
+\quad \forall i\in I_k, \ k\in K, \  d\in D
+\]
+\item Would it be possible to reduce core teaching hours to eliminate teaching on 12pm-6pm on Friday, with Monday-Thursday remaining the same?
+\[
+x_{i,4,5} = x_{i,5,5} = x_{i,6,5} = x_{i,7,5} = x_{i,8,5} = x_{i,9,5} = 0
+\quad \forall i\in I_k,\ k\in K
+\]
+\item Could core teaching/lectures still be delivered without clashes? \\ (We assume that $m=1$ represents lecture events)
+$$\sum_{i\in A^1_k\cup B_k^1}x_{i,t,d}\leq1 \quad \forall k\in K,\ t\in T,\ d\in D$$
+\item Could you provide a lunch break for the majority of students between 12-2pm in each scenario as well?
+\[
+\sum_{i \in I_k} (x_{i,4,d} + x_{i,5,d}) - 1 \le b_d \quad \forall k\in K, \ d\in D
+\]
+$$b_d\ge 0 \quad \forall d\in D$$
+\end{enumerate}
+
+
+\subsection*{\underline{EXTENSION CONSTRAINTS}}
+Another thing that we should also consider is to make the timetable likable by both the students and the teaching staff, independently its feasibility. 
+\\ \\
+Our first consideration is that it might be more convenient to have consecutive events for the same course, for example 2-hour lectures. The generalization of it for n consecutive hours can be formulated as:
+\[
+x_{i,t,d} \le x_{i,t+1,d} + x_{i,t-1,d}
 \]
 \[
-\sum_{t =10}^{18} \sum_{i \in I_k} x_{i,t} \le 6
-\quad \forall k
+2x_{i,t,d} \le x_{i,t-2,d} + x_{i,t-1,d}+x_{i,t+1,d} + x_{i,t+2,d}
 \]
+$$\vdots$$
+$$
+nx_{i,t,d} \le \sum_{r=1}^n \left( x_{i,t-r,d} + x_{i,t+r,d}\right)
+$$
+\[\forall i\in I_k, \ k\in K, \ 
+t \in \{2,\ldots,8\}, \ d\in D
+\]
+It should be noted that the $\forall i\in I_k$ can be violated depending on the preferences of each program. 
+\\ \\
+What we also want to consider is that the daily teaching load is less than 6 hours so students are able to fully concentrate during the whole day, thus:
 \[
-\sum_{t =19}^{27} \sum_{i \in I_k} x_{i,t} \le 6
-\quad \forall k
+\sum_{t \in T} \sum_{i \in I_k} x_{i,t,d} \le 6
+\quad \forall k\in K,\ d\in D 
 \]
+\subsection*{\underline{OBJECTIVE FUNCTION}}
+Finally, we want to minimize the total overlaps occurring in all the programs, and also penalize the absence of a lunch break (if we are considering that). Hence, the objective function is given by:
 \[
-\sum_{t =28}^{36} \sum_{i \in I_k} x_{i,t} \le 6
-\quad \forall k
+\min \sum_{k\in K} y_k + W\sum_{d\in D} b_d
 \]
-\[
-\sum_{t =37}^{45} \sum_{i \in I_k} x_{i,t} \le 6
-\quad \forall k
-\]
-\subsection*{Objective function (minimize overlaps and penalties)}
-\[
-\min \sum_k y_k + W\sum_{r=1}^{5} b_r
-\]
-where W is a potential weight (optional)
 \end{document}
