@@ -1,13 +1,16 @@
 import numpy as np
 import pandas as pd
 import gurobipy as gb
+import math
 
-vet = pd.read_excel("Cleaned Vet School Data.xlsx")
+vet = pd.read_csv("Processed_Vet_School_Data.csv")
 room = pd.read_excel("Rooms and Room Types.xlsx", sheet_name="Room")
 room = room[room["Campus"] == "Easter Bush"]
 vet = vet.drop_duplicates(subset=["Event Name", "Duration (minutes)"])
 vet = vet[vet["Semester"] == "Semester 1"]
-vet["Year"] = (vet["Event Name"].str.strip().str.split().str[0])
+
+targetEvents = ["Lecture", "Practical", "Tutorial", "Workshop"]
+vet = vet[vet["Event Type"].isin(targetEvents)]
 #Sets 
 #Programmes/ Years
 K = vet["Year"].unique()
@@ -56,7 +59,7 @@ B_m = {(k,m): set(
 
 #Parameters
 #Weekly time requirement for each event     
-demand = {(row["Event Name"], row["Event Type"]): row["Duration (minutes)"]
+demand = {(row["Event Name"], row["Event Type"]): math.ceil(int(row["Duration (minutes)"]) / 60)
     for _, row in vet.iterrows()} # duration
 #Weighting
 W = 1
@@ -111,14 +114,14 @@ for k in K:
             model.addConstr(gb.quicksum(x[i,t,d] for i in B[k]) <= y[k])
 
 #No teaching after 5pm
-for i in I:
-    for d in  D:
-        model.addConstr(x[i,9,d] == 0)
+#for i in I:
+ #   for d in  D:
+  #      model.addConstr(x[i,9,d] == 0)
 
 #No teaching on Friday after 2pm
-for i in I:
-    for t in [4,5,6,7,8,9]:
-        model.addConstr(x[i,t,5] == 0)
+#for i in I:
+#    for t in [4,5,6,7,8,9]:
+#        model.addConstr(x[i,t,5] == 0)
 
 #Core teaching being delivered without clashes
 #assume m=0 is lectures
@@ -136,23 +139,23 @@ for k in K:
 
 # We have a room big enough for all x
 model.addConstrs(
-    gb.quicksum(enrolled[i, m] * x[i, t, d] for k in K for m in M for i in A_m[k, m] | B_m[k, m] if enrolled[i, m] <= c) 
-    <= gb.quicksum(c_prime * R_c[c_prime] for c_prime in C if c_prime <= c) 
+    gb.quicksum(x[i, t, d] for k in K for m in M for i in A_m[k, m] | B_m[k, m] if enrolled[i, m] <= c) 
+    <= gb.quicksum(R_c[c_prime] for c_prime in C if c_prime <= c) 
     for c in C for t in T for d in D
     
 )
 # Average room_c utilization <= .75
-model.addConstrs(
-    gb.quicksum(enrolled[i, m] * x[i, t, d] for t in T for d in D for k in K for m in M for i in A_m[k, m] | B_m[k, m] if enrolled[i, m] <= c)
-    <= .75 * (45 * gb.quicksum(c_prime * R_c[c_prime] for c_prime in C if c_prime <= c))
-    for c in C
-)
+#model.addConstrs(
+#    gb.quicksum(enrolled[i, m] * x[i, t, d] for t in T for d in D for k in K for m in M for i in A_m[k, m] | B_m[k, m] if enrolled[i, m] <= c)
+#    <= .75 * (45 * gb.quicksum(c_prime * R_c[c_prime] for c_prime in C if c_prime <= c))
+#    for c in C
+#)
 # Average room_c utilization >= .5
-model.addConstrs(
-    gb.quicksum(enrolled[i, m] * x[i, t, d] for t in T for d in D for k in K for m in M for i in A_m[k, m] | B_m[k, m] if enrolled[i, m] <= c)
-    >= .5 * (45 * gb.quicksum(c_prime * R_c[c_prime] for c_prime in C if c_prime <= c))
-    for c in C
-)
+#model.addConstrs(
+#    gb.quicksum(enrolled[i, m] * x[i, t, d] for t in T for d in D for k in K for m in M for i in A_m[k, m] | B_m[k, m] if enrolled[i, m] <= c)
+#    >= .5 * (45 * gb.quicksum(c_prime * R_c[c_prime] for c_prime in C if c_prime <= c))
+#    for c in C
+#)
 #Optional Constraints
 #Ensure multi-slot events fill consecutive slots
 # for i in I:
@@ -172,7 +175,15 @@ model.addConstrs(
 
 #Objectivve Function
 model.setObjective(gb.quicksum(y[k] for k in K)
-                   + W * gb.quicksum(b[d,k] for d in D for k in K),
-                   gb.GRB.MINIMIZE)
+                   + W * gb.quicksum(b[d,k] for d in D for k in K)
+                   + W * gb.quicksum(x[i,9,d] for i in I for d in D)
+                   ,gb.GRB.MINIMIZE)
 
 model.optimize()
+
+if model.status == gb.GRB.INFEASIBLE:
+    model.computeIIS()
+    model.write("model.ilp")
+    
+elif model.status == gb.GRB.OPTIMAL:
+    model.write("model.sol")
