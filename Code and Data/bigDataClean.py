@@ -113,10 +113,59 @@ enrolled = {
     (row["Module Name"], row["Event Type"]): row["Event Size"]
     for _, row in set_df.iterrows()
 }
+
+# these tutorials are cohorted -> too much demand, so uncohort them some
+demand["Global Challenges for Business", "Tutorial"] = 7
+enrolled["Global Challenges for Business", "Tutorial"] = 74
+
+demand["PGDE Secondary Curriculum and Pedagogy", "Tutorial"] = 8
+enrolled["PGDE Secondary Curriculum and Pedagogy", "Tutorial"] = 200
+
+demand["Year 5 - Process of Care 2", "Tutorial"] = 9
+enrolled["Year 5 - Process of Care 2", "Tutorial"] = 110
+
+demand["Clinical Psychology 1", "Tutorial"] = 40
+enrolled["Clinical Psychology 1", "Tutorial"] = 55
+
+demand["Clinical Psychology 2", "Tutorial"] = 40
+enrolled["Clinical Psychology 2", "Tutorial"] = 55
+
+# fuck the futures institute
+for m in M:
+    for i in I:
+        if "(fusion online)" in i.lower(): 
+            demand[(i,m)] = 0
+            enrolled[i,m] = 0
+        elif "(fusion on-site)" in i.lower():
+            demand[(i,m)] = 0
+            enrolled[i,m] = 0
+
+# these are the same program doing a new course each week
+demand["CBT with Complex Presentations", "Lecture"] = 0
+demand["CBT with Children and Young People in Practice", "Lecture"] = 0
+demand["CBT Placement 1", "Lecture"] = 0
+
+# this had mislabeled practical as lecture
+demand["Conception to Parturition", "Lecture"] -= 3
+demand["Conception to Parturition", "Tutorial"] += 1
+
+# these had mislabeled discussion as lecture
+demand["Gametes and Gonads", "Lecture"] -= 3
+demand["Development and Disease", "Lecture"] -= 3
+demand["Reproductive Cancers", "Lecture"] -=1
+
+values = [v for v in enrolled.values() if v not in (0, None) and not (isinstance(v, float) and np.isnan(v))]
+avg_enrolled = sum(values) / len(values)
+
 for i in I:
     for m in M:
-        if (i,m) in demand and demand[i,m] >= 20:
-            print(f"{i}:\t{m}")
+        if (i,m) in enrolled and enrolled[i,m] == 0:
+            enrolled[i,m] = avg_enrolled
+
+for k in K:
+    if len(A[k]) > 6:
+        print(k)
+
 precomp = {
     "K": K,
     "I": I,
