@@ -1,8 +1,14 @@
+import os
+
+
 def chill_model():
     import gurobipy as gb
     import pickle
+
+    import os
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     
-    with open("model_inputs.pkl", "rb") as f:
+    with open(os.path.join(BASE_DIR, "model_inputs.pkl"), "rb") as f:
         data = pickle.load(f)
     
     K = data["K"]
@@ -124,43 +130,43 @@ def chill_model():
     
     return model, x, y, q, Rules, T, D, data
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    model, x, y, q, Rules, T, D, data = chill_model()
+#     model, x, y, q, Rules, T, D, data = chill_model()
     
-    import gurobi as gb
-    import pandas as pd
+#     import gurobi as gb
+#     import pandas as pd
     
-    if model.status == gb.GRB.INFEASIBLE:
-        model.computeIIS()
-        model.write("model.ilp")
-        print("\nModel Infeasible: Check model.ilp for cause")
+#     if model.status == gb.GRB.INFEASIBLE:
+#         model.computeIIS()
+#         model.write("model.ilp")
+#         print("\nModel Infeasible: Check model.ilp for cause")
     
-    # if there is a solution get it
-    elif model.SolCount:
-        # this is the timetable
-        solution = [
-            (i, m, t, d)
-            for (i, m, t, d), var in x.items()
-            if var.X > 0.5
-        ]
+#     # if there is a solution get it
+#     elif model.SolCount:
+#         # this is the timetable
+#         solution = [
+#             (i, m, t, d)
+#             for (i, m, t, d), var in x.items()
+#             if var.X > 0.5
+#         ]
         
-        sol_df = pd.DataFrame(solution, columns=["Module", "Event", "Time", "Day"])
-        sol_df = sol_df.sort_values(["Day", "Time"])
-        # write to csv
-        # sol_df.to_csv("uni_timetable.csv", index = False)
+#         sol_df = pd.DataFrame(solution, columns=["Module", "Event", "Time", "Day"])
+#         sol_df = sol_df.sort_values(["Day", "Time"])
+#         # write to csv
+#         # sol_df.to_csv("uni_timetable.csv", index = False)
         
-        # this is the rule violations
-        rulebreaks = [
-                (r, k, var.X)
-                for (r, k), var in q.items()
-                if var.X > 0.5
-            ]
-        # including clashes
-        rulebreaks.append(("Clash", k, var.X)
-                          for k, var in y.items()
-                          if var.X > 0.5)
-        rules_df = pd.DataFrame(rulebreaks, columns =["Rule", "CourseID", "Num_Violations"])
-        rules_df = rules_df.sort_values(["CourseID", "Num_Violations"])
-        # write to csv
+#         # this is the rule violations
+#         rulebreaks = [
+#                 (r, k, var.X)
+#                 for (r, k), var in q.items()
+#                 if var.X > 0.5
+#             ]
+#         # including clashes
+#         rulebreaks.append(("Clash", k, var.X)
+#                           for k, var in y.items()
+#                           if var.X > 0.5)
+#         rules_df = pd.DataFrame(rulebreaks, columns =["Rule", "CourseID", "Num_Violations"])
+#         rules_df = rules_df.sort_values(["CourseID", "Num_Violations"])
+#         # write to csv
         # rules_df.to_csv("uni_rulebreakers.csv", index=False)
