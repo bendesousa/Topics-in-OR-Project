@@ -1,0 +1,365 @@
+\documentclass{beamer}
+
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{bm}
+
+\usetheme{metropolis}
+
+\title{University Timetabling (Improvements or Optimisation?)}
+\author{Ben de Sousa, Alexandros Zachakos, Nolan Willoughby, Todd House, Conor McArthur}
+\date{March 31st, 2026}
+
+\begin{document}
+
+%------------------------------------------------
+\frame{\titlepage}
+
+%------------------------------------------------
+\begin{frame}{Project Overview and Objectives}
+\begin{itemize}
+    \item \textbf{Goal:} Improve university timetabling using optimisation
+    \item \textbf{Focus:} develop and validate a working model on Vet School data, then extend to the wider university dataset.
+    \item \textbf{Approach:} formulate timetabling as a binary integer programming problem, with penalty variables for unavoidable timetable-quality violations.
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Main objectives:}
+\begin{itemize}
+    \item Reduce teaching hours from 9am-6pm to 9am-5pm
+    \item Encourage a lunch break between for students with more than 4 hours of classes a/per day?
+    \item Minimise clashes, including optional courses
+    \item Improve room usage and reduce idle capacity
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{The Problem}
+\vspace{0.2cm}
+\textbf{We must assign:}
+\begin{itemize}
+    \item Courses and event types
+    \item Time slots (Monday to Friday)
+    \item Rooms with limited capacity
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Subject to:}
+\begin{itemize}
+    \item No compulsory clashes within a programme
+    \item Correct weekly teaching hours
+    \item Limited room availability
+    \item Student experience constraints
+\end{itemize}
+
+\textbf{Do we want to add in why this might be hard in writing or we can discuss it over presenting?}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Our Approach}
+\textbf{Our Approach}
+\begin{itemize}
+    \item Formulate the problem as an integer programming model
+    \item Use Gurobi to solve the optimisation problem
+    \item Test first on the Vet School subset
+    \item Extend to the broader university dataset
+\end{itemize}
+
+\vspace{0.4cm}
+\textbf{Why this approach?}
+\begin{itemize}
+    \item Gives a clear mathematical description of the timetable
+    \item Handles hard constraints exactly
+    \item Allows soft constraints to be encoded through penalties
+    \item Produces an interpretable ``best compromise'' solution
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Project Pipeline}
+\begin{center}
+Raw Data $\rightarrow$ Cleaning $\rightarrow$ Model $\rightarrow$ Optimisation $\rightarrow$ Timetable $\rightarrow$ Analysis
+\end{center}
+
+\vspace{0.4cm}
+\begin{itemize}
+    \item We take the raw excel data and clean and preprocess in Python (using bigDataClean.py)
+    \item This produces the output (model\_inputs.pkl) which is the processed data
+    \item Mathematical model implemented in Gurobi (using chill\_model.py)
+    \item Timetable and rule-breaker outputs written to CSV
+    \item Heatmaps and analysis used to interpret behaviour
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Mathematical Structure of the Model}
+\begin{itemize}
+    \item We model timetabling as a binary optimisation problem.
+    \item Main sets:
+    \begin{itemize}
+        \item $K$: Programme-year groups
+        \item $I_k$: Courses in programme $k$
+        \item $A_k \subseteq I_k$: Compulsory courses
+        \item $B_k \subseteq I_k$: Optional courses
+        \item $M$: Event types
+        \item $T$: Teaching hours in the day
+        \item $D$: Teaching days in the week
+        \item $C$: Room capacities
+    \end{itemize}
+    \item This lets us model how whole degree programmes experience the timetable, not just individual classes.
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Parameters and Decision Variables}
+\textbf{Key parameters:}
+\begin{itemize}
+    \item $d_{i,m}$: Weekly hours required for event type $m$ of course $i$
+    \item $s_{i,m}$: No. of students attending event $m$ of course $i$
+    \item $r_c$: No. of rooms with capacity $C$
+    \item $P_k, P_k'$: Available and Required course choices in programme $k$
+\end{itemize}
+
+\vspace{0.3cm}
+\[
+x_{i,t,d} =
+\begin{cases}
+1 & \text{if event of course } i \text{ is scheduled at time } t \text{ on day } d \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+\vspace{0.2cm}
+\textbf{Slack variables:}
+\begin{itemize}
+    \item $y_k$: Optional overlap penalty
+    \item $b_d$: Lunch-break violation penalty on day $d$
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Decision Variable: Why it Matters}
+\[
+x_{i,m,t,d} =
+\begin{cases}
+1 & \text{if event } m \text{ of course } i \text{ is scheduled at time } t \text{ on day } d \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+\vspace{0.4cm}
+\begin{itemize}
+    \item This variable defines the timetable itself.
+    \item All possible timetable correspond to a particular assignment of 0s and 1s.
+    \item The solver searches through these assignments and keeps only those that satisfy the constraints.
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Core Constraints}
+\textbf{Examples of Hard Constraints:}
+\begin{itemize}
+    \item No clashes between compulsory courses:
+    \[
+    \sum_{i \in A_k} x_{i,t,d} \leq 1
+    \]
+    \item Required teaching hours:
+    \[
+    \sum_{d \in D}\sum_{t \in T}\sum_{i \in A_k} x_{i,m,t,d} = d_{i,m}
+    \]
+    \item Room-capacity constraints
+    \[
+    \sum_{k \in K}\quad \sum_{i\in A_k, \quad m\in M: \quad s_{i,m} \leq c} s_{i,m} x_{i,t,d} \leq \sum_{c'\leq c}r_{c'}
+    \]
+\end{itemize}
+
+These constraints capture student feasibility, delivery requirements and physical resource limits
+
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Hard Constraints vs Soft Constraints}
+\textbf{Hard constraints} determine whether a timetable is feasible:
+\begin{itemize}
+    \item No compulsory clashes
+    \item Correct weekly teaching hours
+    \item Simultaneous events fit room capacity
+\end{itemize}
+
+\vspace{0.4cm}
+\textbf{Soft constraints} determine timetable quality:
+\begin{itemize}
+    \item Lunch break between 12-2pm
+    \item No teaching after 5pm
+    \item Reduced Friday afternoon teaching
+    \item Maximum daily teaching load
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Why These Constraints Make Sense}
+\begin{itemize}
+    \item \textbf{Compulsory clash constraint}
+    \[
+    \sum_{i \in A_k} x_{i,t,d} \leq 1
+    \]
+    ensures students can attend all required courses.
+
+    \item \textbf{Optional vs compulsory constraint}
+    prevents optional modules from becoming impossible choices.
+
+    \item \textbf{Demand constraint}
+    \[
+    \sum_{d \in D}\sum_{t \in T} x_{i,m,t,d} = d_{i,m}
+    \]
+    ensures the correct number of hours is delivered.
+
+    \item \textbf{Room-capacity constraints}
+    ensure the timetable is physically implementable, not just mathematically feasible.
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Interpreting the Room-Capacity Constraint}
+\[
+\sum_{k \in K}\sum_{i \in I_k,\, m \in M:\, s_{i,m}\leq c} s_{i,m}x_{i,t,d}
+\leq
+\sum_{c' \leq c} r_{c'}
+\]
+
+\begin{itemize}
+    \item This constraint checks whether all events running at the same time can be accommodated by the available room stock. 
+\end{itemize}
+idk if we want to discuss more about this constraint? along lines of classes compete for time and rooms then programmes compete for student availability? 
+\end{frame}
+
+%------------------------------------------------
+
+%------------------------------------------------
+\begin{frame}{Why Use Slack Variables?}
+Instead of forcing every preference to hold exactly, we measure when it is violated. This makes the model more realistic and avoids unnecessary infeasibility.
+\vspace{0.3cm}
+\[
+\sum_{i \in B_k} x_{i,t,d} \leq y_k
+\qquad
+\sum_{i \in I_k}(x_{i,4,d}+x_{i,5,d}) - 1 \leq b_d
+\]
+
+\begin{itemize}
+    \item $y_k$ Measures optional-course overlap
+    \item $b_d$ Measures lunch-break violations
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Objective Function}
+\[
+\min \sum_{k \in K} y_k + W\sum_{d \in D} b_d
+\]
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item The solver is not searching for any feasible timetable.
+    \item It is searching for the feasible timetable with the lowest total penalty.
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Interpretation:}
+\begin{itemize}
+    \item $\sum_{k\in K} y_k$: reduces overlap across programmes
+    \item $\sum_{d\in D} b_d$: preserves lunch breaks where possible
+    \item $W$: controls the priority placed on lunch protection
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Extension Constraints and Timetable Quality}
+The core model focuses on feasibility, but some features affect how usable (right word?) a timetable feels.
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Consecutive teaching blocks may be preferable to highly fragmented teaching, i.e rather have classes back to back than at 9am and 5pm
+    \item Excessive daily contact time reduces quality
+\end{itemize}
+
+\[
+\sum_{t \in T}\sum_{i \in I_k} x_{i,t,d} \leq 6
+\]
+\begin{itemize}
+    \item This limits daily teaching load.
+    \item It is a quality-based constraint, not a minimum feasibility requirement. Just because a timetable in feasible does not mean it is a good timetable
+\end{itemize}
+\end{frame}
+
+
+%------------------------------------------------
+\begin{frame}{Why Start with the Vet School?}
+The raw university data was large and messy. The main issues were encoded or abbreviated naming, duplicate or redundant entries, conflicting room and location indicators and event data spread across multiple weeks. So we started and focused on a smaller subset of this data: The Vet School.
+\begin{itemize}
+    \item The Vet School provided a smaller and more isolated subset of the university data.
+    \item It has relatively little overlap with other schools and campuses.
+    \item This made it a strong test case for:
+    \begin{itemize}
+        \item Model debugging
+        \item Feasibility checks
+        \item Early diagnostics
+        \item Sensitivity testing
+    \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Results: Timetable}
+\begin{itemize}
+    \item Model successfully generated results with a high degree of optimality
+    \item \textbf{THEN CONFIRM WAS THIS THE CASE...}
+    \item All compulsory courses were scheduled without clashes
+    \item Required teaching hours were satisfied
+    \item The result is a feasible and implementable timetable
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Why this matters:}
+\begin{itemize}
+    \item It validates the mathematical formulation
+    \item Tgis shows the Gurobi implementation is operational on real data
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Results: Violations}
+    Talk about some of the violations (lunch break, optional course overlaps, etc), why even if we have some it doesnt mean our model is 'bad'. Then interpretation of these potentially? Could leave to later section?
+\end{frame}
+
+\begin{frame}{Visualisation/Heatmap}
+    Add the heatmap into this slide maybe? Or add it into a results slide but think it would be good to give it its own slide
+\end{frame}
+
+\begin{frame}{Considering a Hybrid Extension}
+Integer programming gives strong structure and
+interpretability, however, full university timetable problem scales very quickly. So this motivates combining IP with a GA. Talk about why
+\end{frame}
+
+\begin{frame}{Genetic Algorithm Extension}
+    How it works
+\end{frame}
+
+\begin{frame}{Limitations and Future Work}
+    
+\end{frame}
+
+\begin{frame}{Conclusion}
+    
+\end{frame}
+
+\begin{frame}{Questions}
+    
+\end{frame}
+
+\end{document}
