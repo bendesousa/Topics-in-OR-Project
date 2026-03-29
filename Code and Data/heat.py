@@ -21,7 +21,13 @@ heatmap_data = counts.pivot(index="Time", columns="Day", values="Count").fillna(
 
 # 3. Sort rows/columns so it looks nice
 heatmap_data = heatmap_data.sort_index().reindex(columns=["Monday","Tuesday","Wednesday My Dudes", "Out of Touch Thursday", "It's Friday Thennnnn"])
-
+heatmap_data = heatmap_data.rename(columns={
+        "Monday": "Monday",
+        "Tuesday": "Tuesday",
+        "Wednesday My Dudes": "Wednesday",
+        "Out of Touch Thursday": "Thursday",
+        "It's Friday Thennnnn": "Friday"
+    })
 # 4. Plot
 sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="viridis")
 plt.savefig("tt_heatmap.png")
