@@ -163,9 +163,7 @@ def chill_model():
 #                 if var.X > 0.5
 #             ]
 #         # including clashes
-#         rulebreaks.append(("Clash", k, var.X)
-#                           for k, var in y.items()
-#                           if var.X > 0.5)
+#         rulebreaks.extend(("Clash", k, var.X) for k, var in y.items() if var.X > 0.5)
 #         rules_df = pd.DataFrame(rulebreaks, columns =["Rule", "CourseID", "Num_Violations"])
 #         rules_df = rules_df.sort_values(["CourseID", "Num_Violations"])
 #         # write to csv

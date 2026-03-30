@@ -29,23 +29,6 @@ event_df = pd.DataFrame(rows)
 
 #Running GA Alg1
 # print("Running GA Alg1...")
-# feasible_population, events = run_ga(
-#     event_df,
-#     T,
-#     D,
-#     mode="alg1"
-# )
-
-# #Running GA Alg2
-# print("Running GA Alg2...")
-# best_alg2_solution, _ = run_ga(
-#     event_df,
-#     T,
-#     D,
-#     mode="alg2",
-#     initial_population=feasible_population
-# )
-
 feasible_population, events = run_ga(
     event_df, T, D,
     mode="alg1",
@@ -53,6 +36,8 @@ feasible_population, events = run_ga(
     generations=50
 )
 
+# #Running GA Alg2
+# print("Running GA Alg2...")
 best_alg2_solution, _ = run_ga(
     event_df, T, D,
     mode="alg2",
@@ -64,15 +49,6 @@ best_alg2_solution, _ = run_ga(
 #Rerunning base model with GA solution as initial guess
 print("Rerunning base model with GA solution as initial guess...")
 # Assign GA solution into x as initial values
-# for idx, (t, d) in enumerate(best_alg2_solution):
-#     i, m = events[idx]
-
-#     for key, var in x.items():
-#         if key == (i, m, t, d):
-#             var.Start = 1.0
-#         else:
-#             # optional: initialise others to 0
-#             pass
 
 for idx, (t, d) in enumerate(best_alg2_solution):
     i, m = events[idx]
@@ -81,22 +57,6 @@ for idx, (t, d) in enumerate(best_alg2_solution):
 
 model.optimize()
 
-#Results
-# if model.status == gb.GRB.OPTIMAL:
-
-#     solution = [
-#         (i, m, t, d)
-#         for (i, m, t, d), var in x.items()
-#         if var.X > 0.5
-#     ]
-
-#     sol_df = pd.DataFrame(solution, columns=["Module", "Event", "Time", "Day"])
-#     sol_df = sol_df.sort_values(["Day", "Time"])
-
-#     sol_df.to_csv("extended_timetable.csv", index=False)
-
-# else:
-#     print("Model status:", model.status)
 
 # Results
 if model.SolCount > 0:
@@ -109,6 +69,22 @@ if model.SolCount > 0:
     sol_df = pd.DataFrame(solution, columns=["Module", "Event", "Time", "Day"])
     sol_df = sol_df.sort_values(["Day", "Time"])
     sol_df.to_csv("extended_timetable.csv", index=False)
+    # this is the rule violations
+    rulebreaks = [
+            (r, k, var.X)
+            for (r, k), var in q.items()
+            if var.X > 0.5
+        ]
+    # including clashes
+    rulebreaks.extend(
+        ("Clash", k, var.X) 
+        for k, var in y.items()
+        if var.X > 0.5
+        )
+    rules_df = pd.DataFrame(rulebreaks, columns =["Rule", "CourseID", "Num_Violations"])
+    rules_df = rules_df.sort_values(["CourseID", "Num_Violations"])
+    # write to csv
+    rules_df.to_csv("ext_rulebreakers.csv", index=False)
 
 else:
     print("No solution found, status:", model.status)
