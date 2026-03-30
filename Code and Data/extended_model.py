@@ -6,6 +6,17 @@ import pandas as pd
 #Running base model for initial guess
 model, x, y, q, Rules, T, D, data = chill_model()
 
+# Save base MIP result
+if model.SolCount > 0:
+    base_solution = [
+        (i, m, t, d)
+        for (i, m, t, d), var in x.items()
+        if var.X > 0.5
+    ]
+    base_df = pd.DataFrame(base_solution, columns=["Module", "Event", "Time", "Day"])
+    base_df.sort_values(["Day", "Time"]).to_csv("base_timetable.csv", index=False)
+    print("Base MIP objective:", model.ObjVal)
+
 I = data["I"]
 M = data["M"]
 demand = data["demand"]
@@ -38,15 +49,15 @@ event_df = pd.DataFrame(rows)
 feasible_population, events = run_ga(
     event_df, T, D,
     mode="alg1",
-    pop_size=10,
-    generations=20
+    pop_size=20,
+    generations=50
 )
 
 best_alg2_solution, _ = run_ga(
     event_df, T, D,
     mode="alg2",
-    pop_size=10,
-    generations=20,
+    pop_size=20,
+    generations=50,
     initial_population=feasible_population
 )
 
