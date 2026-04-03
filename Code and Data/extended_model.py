@@ -6,8 +6,11 @@ import pandas as pd
 #Running base model for initial guess
 model, x, y, q, Rules, T, D, data = chill_model()
 
-# Save base MIP result
+
 if model.SolCount > 0:
+    base_obj = model.ObjVal
+    base_gap = model.MIPGap
+
     base_solution = [
         (i, m, t, d)
         for (i, m, t, d), var in x.items()
@@ -15,7 +18,17 @@ if model.SolCount > 0:
     ]
     base_df = pd.DataFrame(base_solution, columns=["Module", "Event", "Time", "Day"])
     base_df.sort_values(["Day", "Time"]).to_csv("base_timetable.csv", index=False)
-    print("Base MIP objective:", model.ObjVal)
+
+    base_rulebreaks = [
+        (r, k, var.X)
+        for (r, k), var in q.items()
+        if var.X > 0.5
+    ]
+    base_rulebreaks.extend(("Clash", k, var.X) for k, var in y.items() if var.X > 0.5)
+    base_rules_df = pd.DataFrame(base_rulebreaks, columns=["Rule", "CourseID", "Num_Violations"])
+    base_rules_df.sort_values(["CourseID", "Num_Violations"]).to_csv("base_rulebreakers.csv", index=False)
+
+    print(f"Base MIP objective: {base_obj:.2f}, gap: {base_gap:.2%}")
 
 I = data["I"]
 M = data["M"]
@@ -55,7 +68,13 @@ for idx, (t, d) in enumerate(best_alg2_solution):
     if (i, m, t, d) in x:
         x[i, m, t, d].Start = 1.0
 
-model.optimize()
+model.Params.MIPGap = 0.05
+model.Params.TimeLimit = 35473
+
+try:
+    model.optimize()
+except KeyboardInterrupt:
+    pass
 
 
 # Results
@@ -86,5 +105,9 @@ if model.SolCount > 0:
     # write to csv
     rules_df.to_csv("ext_rulebreakers.csv", index=False)
 
+    print(f"Base MIP:      obj={base_obj:.2f}, gap={base_gap:.2%}")
+    print(f"GA-seeded MIP: obj={model.ObjVal:.2f}, gap={model.MIPGap:.2%}")
+
 else:
     print("No solution found, status:", model.status)
+

@@ -124,9 +124,15 @@ def chill_model():
                        ,gb.GRB.MINIMIZE)
     
     # current time limit is 10 minutes, can change obvi, similar models take a day on better hardware
-    model.Params.TimeLimit = 600
-    
-    model.optimize()
+    model.Params.MIPGap = 0.10
+    model.Params.TimeLimit = 71390
+    model.Params.MIPFocus = 1
+    model.Params.Heuristics = 0.5
+   
+    try:
+        model.optimize()
+    except KeyboardInterrupt:
+        pass
     
     return model, x, y, q, Rules, T, D, data
 

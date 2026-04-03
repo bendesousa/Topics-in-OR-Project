@@ -1,12 +1,17 @@
+import os
+
+
 def base_model():
 
     import numpy as np
     import pandas as pd
     import gurobipy as gb
     import math
+    import os
 
-    vet = pd.read_csv("Processed_Vet_School_Data.csv")
-    room = pd.read_excel("Rooms and Room Types.xlsx", sheet_name="Room")
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    vet = pd.read_csv(os.path.join(BASE_DIR, "Processed_Vet_School_Data.csv"))
+    room = pd.read_excel(os.path.join(BASE_DIR, "Rooms and Room Types.xlsx"), sheet_name="Room")
     room = room[room["Campus"] == "Easter Bush"]
     vet = (
         vet
@@ -15,7 +20,7 @@ def base_model():
         .copy()
     )
 
-    programs_and_reqs = pd.read_excel("Programme-Course.xlsx")
+    programs_and_reqs = pd.read_excel(os.path.join(BASE_DIR, "Programme-Course.xlsx"))
     programs_and_reqs = programs_and_reqs.rename(columns={"ModuleId": "Module Code"})
 
     set_df = vet.merge(programs_and_reqs, on="Module Code", how="inner")

@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ext_tt = pd.read_csv(os.path.join(BASE_DIR, "extended_timetable.csv"))
+ext_tt = pd.read_csv(os.path.join(BASE_DIR, "base_timetable.csv"))
 ext_tt = ext_tt[["Time", "Day"]]
 
 # 1. Count occurrences of each (Time, Day)
@@ -56,6 +56,6 @@ heatmap_data = heatmap_data.rename(columns={
     })
 # 4. Plot
 sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="viridis")
-plt.savefig("extended_heatmap.png")
+plt.savefig("base_heatmap.png")
 plt.show()
 
